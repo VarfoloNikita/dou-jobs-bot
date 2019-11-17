@@ -82,7 +82,8 @@ def parse_vacancies(data: feedparser.FeedParserDict) -> Iterator[Vacancy]:
                 exc_info=exception,
             )
             continue
-
+        text = f'*{entry.title}*\n\n' + text
+        text += f'*Посилання*\n[{entry.title}]({entry.link})'
         yield Vacancy(url=url, title=entry.title, text=text, date=date)
 
 
