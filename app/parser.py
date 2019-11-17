@@ -92,7 +92,7 @@ def get_new_vacancies():
         .distinct(Subscription.position_id, Subscription.city_id).all()
     )
 
-    for subscription, city, position in subscriptions:
+    for subscription, position, city in subscriptions:
         app.logger.info(f'Get feed for {city.name}, {position.name}')
 
         url = build_feed_url(city, position)
