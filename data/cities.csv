@@ -1,4 +1,5 @@
-id,name,query
+id,name,param
+0,Київ,city=Київ
 1,Харків,city=Харків
 2,Львів,city=Львів
 3,Дніпро,city=Дніпро

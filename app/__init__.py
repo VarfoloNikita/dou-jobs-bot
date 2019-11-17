@@ -1,25 +1,32 @@
-import telegram
+import atexit
+import logging
+
 import telegram.ext
+from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 from flask_dotenv import DotEnv
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
+app.logger.setLevel(logging.DEBUG)
 env = DotEnv(app)
 env.alias(maps={'DATABASE_URL': 'SQLALCHEMY_DATABASE_URI'})
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-updater = telegram.ext.Updater(
-    token=app.config['TELEGRAM_TOKEN'],
-    use_context=True,
-)
-bot = updater.bot
+bot = telegram.Bot(token=app.config['TELEGRAM_TOKEN'])
+updater = telegram.ext.Updater(bot=bot, use_context=True)
+scheduler = BackgroundScheduler()
 
 from app import views
 from app import models
 from app import handlers
+from app import admin
+from app import cron
+
+handlers.configure_dispatcher(updater.dispatcher)
+cron.configure_scheduler()
 
 
 @app.before_first_request
