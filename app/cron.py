@@ -13,7 +13,7 @@ def configure_scheduler():
         'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI'])
     }
 
-    scheduler.add_job(func=job, trigger="interval", minutes=30)
+    scheduler.add_job(func=job, trigger="interval", minutes=5)
     scheduler.configure(jobstores=jobstores, timezone=utc)
     scheduler.start()
 
