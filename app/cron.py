@@ -1,6 +1,5 @@
 import atexit
 
-from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from pytz import utc
 
@@ -11,7 +10,7 @@ from app.sender import send_vacancies
 
 def configure_scheduler():
     jobstores = {
-        'default': SQLAlchemyJobStore(url=app.config['DATABASE_URL'])
+        'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI'])
     }
 
     scheduler.add_job(func=job, trigger="interval", minutes=30)
