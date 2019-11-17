@@ -19,8 +19,7 @@ def set_hook():
 
 if __name__ == '__main__':
     # Start the Bot
-    # updater.start_polling()
-    set_hook()
+    updater.start_polling()
 
     logging.info('TELEGRAM BOT was started')
 

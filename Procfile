@@ -1,2 +1,2 @@
 release: flask db upgrade
-web: python dev.py
+worker: python dev.py
