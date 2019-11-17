@@ -1,5 +1,6 @@
 import atexit
 import logging
+import os
 
 import telegram.ext
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -10,8 +11,12 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
-env = DotEnv(app)
-env.alias(maps={'DATABASE_URL': 'SQLALCHEMY_DATABASE_URI'})
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', None)
+app.config['TELEGRAM_TOKEN'] = os.getenv('TELEGRAM_TOKEN', None)
+if not app.config['SQLALCHEMY_DATABASE_URI']:
+    env = DotEnv(app)
+    env.alias(maps={'DATABASE_URL': 'SQLALCHEMY_DATABASE_URI'})
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
