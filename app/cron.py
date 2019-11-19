@@ -20,7 +20,6 @@ def configure_scheduler():
 
 
 def job():
-    pass
     parser.get_new_vacancies()
     sender.dispatch_vacancies()
     sender.send_vacancies()
