@@ -12,7 +12,7 @@ from telegram.ext import (
 from app import db, parser, sender
 from app.contants import DEFAULT_GREETING
 from app.enum import AddSubscriptionStates, SubscriptionPageState, Action
-from app.models import City, Position, Subscription, UserChat, Greeting, Statistic
+from app.models import City, Position, Subscription, UserChat, Greeting, Stat
 from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard
 
 
@@ -117,7 +117,7 @@ def add_position(update: Update, context: CallbackContext):
         ),
         parse_mode='Markdown',
     )
-    stat = Statistic(chat_id=message.chat_id, action=Action.subscribed)
+    stat = Stat(chat_id=message.chat_id, action=Action.subscribed.value)
     db.session.add(stat)
     db.session.commit()
 
@@ -214,7 +214,7 @@ def delete_subscription(update: Update, context: CallbackContext):
     db.session.commit()
 
     if not Subscription.query.first():
-        stat = Statistic(chat_id=chat_id, action=Action.unsubscribe)
+        stat = Stat(chat_id=chat_id, action=Action.unsubscribe.value)
         db.session.add(stat)
         db.session.commit()
 
@@ -225,7 +225,7 @@ def unsubscribe_all(update: Update, context: CallbackContext):
     subscriptions = db.session.query(Subscription).filter_by(chat_id=update.message.chat_id)
     subscriptions.delete(synchronize_session=False)
 
-    stat = Statistic(chat_id=update.message.chat_id, action=Action.unsubscribe)
+    stat = Stat(chat_id=update.message.chat_id, action=Action.unsubscribe.value)
     db.session.add(stat)
     db.session.commit()
 

@@ -6,7 +6,7 @@ from typing import Dict, List, Any
 from flask import make_response
 
 from app import app, db
-from app.models import UserChat, Subscription, City, Position, Statistic
+from app.models import UserChat, Subscription, City, Position, Stat
 
 DataDict = Dict[str, Any]
 
@@ -64,11 +64,11 @@ def subscriptions():
 
 @app.route('/actions', methods=['GET'])
 def actions():
-    items = Statistic.query.all()
+    items = Stat.query.all()
     return _make_csv(
         items=[
             {
-                'action': stat.action.value,
+                'action': stat.action,
                 'chat_id': stat.chat_id,
                 'date': stat.date.date(),
             }

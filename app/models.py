@@ -24,7 +24,7 @@ class UserChat(db.Model):
             db.session.add(self)
             db.session.commit()
             db.session.refresh(self)
-            stat = Statistic(chat_id=self.id, action=Action.start)
+            stat = Stat(chat_id=self.id, action=Action.start.value)
             db.session.add(stat)
             db.session.commit()
             return self
@@ -91,16 +91,9 @@ class Greeting(db.Model):
         db.session.commit()
 
 
-class Statistic(db.Model):
+class Stat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    action = db.Column(
-        db.Enum(
-            Action,
-            native_enum=False,
-            create_constraint=False,
-        ),
-        nullable=False,
-    )
+    action = db.Column(db.String(56), nullable=False)
     date = db.Column(db.DateTime, default=utc_now)
     chat_id = db.Column(db.Integer, db.ForeignKey('user_chat.id'), nullable=False)
     meta = db.Column(db.JSON, nullable=False, default=lambda: {})
