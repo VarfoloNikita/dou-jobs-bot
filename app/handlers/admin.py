@@ -1,4 +1,5 @@
 import functools
+import os
 from typing import Callable, Any
 
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
@@ -113,9 +114,7 @@ def cancel_update_greeting(update: Update, context: CallbackContext):
 
 @admin_required
 def get_statistic(update: Update, context: CallbackContext):
-    app_name = app.config['HEROKU_APP_NAME']
-    domain = app.config['HEROKU_DOMAIN']
-    host = f'https://{app_name}.{domain}'
+    host = 'https://dou-jobs-telegram-bot.herokuapp.com'
 
     update.message.reply_text(
         text=(
