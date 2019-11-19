@@ -27,18 +27,7 @@ scheduler = BackgroundScheduler()
 from app import views
 from app import models
 from app import handlers
-from app import admin
 from app import cron
 
 handlers.configure_dispatcher(updater.dispatcher)
 cron.configure_scheduler()
-
-
-@app.before_first_request
-def initialize():
-    pass
-    # APP_NAME = app.config['HEROKU_APP_NAME']
-    # DOMAIN = app.config['HEROKU_DOMAIN']
-    # WEB_HOOK_URL = f'https://{APP_NAME}.{DOMAIN}/telegram'
-    # print('WEB_HOOK_URL', WEB_HOOK_URL)
-    # print(bot.set_webhook(url=WEB_HOOK_URL))

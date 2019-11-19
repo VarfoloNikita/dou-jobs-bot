@@ -5,6 +5,7 @@ class Action(Enum):
 
     _default = '0' * 50
     start = 'start'
+    subscribed = 'subscribed'
     unsubscribe = 'cancel'
     city_added = 'city_added'
     position_added = 'position_added'

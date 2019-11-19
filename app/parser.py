@@ -14,6 +14,24 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 URL = 'https://jobs.dou.ua/vacancies/feeds/?'
 
+MESSAGE_LIMIT = 4095
+
+
+def remove_markdown_symbols(text):
+    return (
+        text.replace('*', '').replace(']', '').replace('[', '')
+        .replace('_', '').replace('`', '')
+    )
+
+
+def escape_markdown_symbols(text):
+    return (
+        text.replace("_", "\\_")
+        .replace("*", "\\*")
+        .replace("[", "\\[")
+        .replace("`", "\\`")
+    )
+
 
 def build_feed_url(city: City, position: Position) -> str:
     return safe_url(f'{URL}{position.param}&{city.param}')
@@ -41,7 +59,7 @@ def get_block_text(soup: BeautifulSoup, class_: str):
     text = raw_text.get_text()
     text = re.sub(r'[ \t]+', r' ', text)
     text = re.sub(r'\n+', r'\n', text)
-    text = text.replace('*', '').replace('_', '').replace('`', '')
+    text = escape_markdown_symbols(text)
     return text.strip()
 
 
@@ -81,9 +99,39 @@ def parse_vacancies(data: feedparser.FeedParserDict) -> Iterator[Vacancy]:
                 exc_info=exception,
             )
             continue
-        text = f'*{entry.title}*\n\n' + text
-        text += f'*Посилання*\n[{entry.title}]({entry.link})'
-        yield Vacancy(url=url, title=entry.title, text=text, date=date)
+        title = remove_markdown_symbols(entry.title)
+        text = f'*{title}*\n\n' + text
+        link = f'*Посилання*\n[{title}]({entry.link})'
+
+        result = text + link
+        if len(result) > MESSAGE_LIMIT:
+            strip_to = MESSAGE_LIMIT - len(link) - 10
+            result = text[:strip_to] + '...\n\n' + link
+
+        yield Vacancy(url=url, title=entry.title, text=result, date=date)
+
+
+def update_new_vacancies(city: City, position: Position):
+    app.logger.info(f'Get feed for {city.name}, {position.name}')
+
+    url = build_feed_url(city, position)
+    data = feedparser.parse(url)
+    for vacancy in parse_vacancies(data):
+        vacancy = vacancy.soft_add()
+
+        # insert new vacancy parameters
+        parameters = VacancyParameters(
+            city_id=city.id,
+            position_id=position.id,
+            vacancy_id=vacancy.id,
+        )
+        if parameters.exists():
+            app.logger.info('Skip entire feed such as vacancy exists')
+            break
+
+        db.session.add(parameters)
+        db.session.commit()
+        app.logger.info(f'New vacancy was added: {vacancy.title}')
 
 
 def get_new_vacancies():
@@ -93,23 +141,4 @@ def get_new_vacancies():
     )
 
     for subscription, position, city in subscriptions:
-        app.logger.info(f'Get feed for {city.name}, {position.name}')
-
-        url = build_feed_url(city, position)
-        data = feedparser.parse(url)
-        for vacancy in parse_vacancies(data):
-            vacancy = vacancy.soft_add()
-
-            # insert new vacancy parameters
-            parameters = VacancyParameters(
-                city_id=city.id,
-                position_id=position.id,
-                vacancy_id=vacancy.id,
-            )
-            if parameters.exists():
-                app.logger.info('Skip entire feed such as vacancy exists')
-                break
-
-            db.session.add(parameters)
-            db.session.commit()
-            app.logger.info(f'New vacancy was added: {vacancy.title}')
+        update_new_vacancies(city, position)

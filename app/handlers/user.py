@@ -9,10 +9,10 @@ from telegram.ext import (
     Dispatcher,
 )
 
-from app import db
-from app.contants import ADMIN_MENU, MENU, DEFAULT_GREETING
-from app.enum import AddSubscriptionStates, SubscriptionPageState
-from app.models import City, Position, Subscription, UserChat, Greeting
+from app import db, parser, sender
+from app.contants import DEFAULT_GREETING
+from app.enum import AddSubscriptionStates, SubscriptionPageState, Action
+from app.models import City, Position, Subscription, UserChat, Greeting, Statistic
 from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard
 
 
@@ -24,32 +24,23 @@ def start(update: Update, context: CallbackContext):
         is_admin=False,
         is_active=True,
     )
-    chat = chat.soft_add()
+    chat.soft_add()
 
-    # select greeting and menu items
-    menu = ADMIN_MENU if chat.is_admin else MENU
-    state = AddSubscriptionStates.city
-    greeting = 'Вітаю, мій володаре 👑'
-    if not chat.is_admin:
-        item = Greeting.query.first()
-        greeting = item.text if item else DEFAULT_GREETING
-        state = ConversationHandler.END
+    # select greeting and menu item
+    item = Greeting.query.first()
+    greeting = item.text if item else DEFAULT_GREETING
 
     # greet with user
-    update.message.reply_text(f'{greeting}', parse_mode='Markdown')
-    return state
+    update.message.reply_text(greeting, parse_mode='Markdown')
+    return add_subscription(update, context)
 
 
 def add_subscription(update: Update, context: CallbackContext):
     update.message.reply_text(
-        "Для підпсання на нові вакансії потрібно пройти невелике опитування. "
-        "Якщо бажаєте відхили опитування введіть команду /cancel"
-    )
-    update.message.reply_text(
         text=(
             "Вкажіть місто де потрібно шукати вакансії, для цього оберіть один "
             "і з варіантів зі списку нижче. Використовуйте кнопки ⬅️️ та ➡️ для навігації між "
-            "сторінками списку"
+            "сторінками списку. Якщо захочете віхилити опитування, натисніть /cancel"
         ),
         reply_markup=get_cities_keyboard(),
     )
@@ -97,8 +88,8 @@ def add_position(update: Update, context: CallbackContext):
     callback_query: CallbackQuery = update.callback_query
     _, suffix = callback_query.data.strip().split('.')
     position = Position.query.filter_by(id=suffix).first()
-    city_name: str = context.user_data['city_name']
     city_id: str = context.user_data['city_id']
+    city = City.query.get(city_id)
     message: Message = callback_query.message
 
     subscription = Subscription(
@@ -119,10 +110,21 @@ def add_position(update: Update, context: CallbackContext):
         text=(
             f"Опитування завершено 🎉. \n"
             f"Тепер я буду тебе повіщувати про "
-            f"нові вакансії з категорії *{position.name}* у місті *{city_name}*."
+            f"нові вакансії з категорії *{position.name}* у місті *{city.name}*."
+            f"\n\n"
+            f"Також зараз я пошукаю вакансії і ж за декілька хвилин я надішлю тобі список "
+            f"вакансій за вашими параметрами."
         ),
         parse_mode='Markdown',
     )
+    stat = Statistic(chat_id=message.chat_id, action=Action.subscribed)
+    db.session.add(stat)
+    db.session.commit()
+
+    parser.update_new_vacancies(city, position)
+    sender.dispatch_vacancies()
+    sender.send_vacancies()
+
     return ConversationHandler.END
 
 
@@ -206,10 +208,28 @@ def delete_subscription(update: Update, context: CallbackContext):
     if not subscription:
         return
 
+    chat_id = subscription.chat_id
+
     db.session.delete(subscription)
     db.session.commit()
 
+    if not Subscription.query.first():
+        stat = Statistic(chat_id=chat_id, action=Action.unsubscribe)
+        db.session.add(stat)
+        db.session.commit()
+
     list_subscription(update, context)
+
+
+def unsubscribe_all(update: Update, context: CallbackContext):
+    subscriptions = db.session.query(Subscription).filter_by(chat_id=update.message.chat_id)
+    subscriptions.delete(synchronize_session=False)
+
+    stat = Statistic(chat_id=update.message.chat_id, action=Action.unsubscribe)
+    db.session.add(stat)
+    db.session.commit()
+
+    update.message.reply_text("Ви відписалися від всіх розсилок вакансій")
 
 
 def add_user_handlers(dp: Dispatcher):
@@ -242,3 +262,5 @@ def add_user_handlers(dp: Dispatcher):
     dp.add_handler(CallbackQueryHandler(choose_subscription, pattern=r'subscription\.choose\.\d+'))
     dp.add_handler(CallbackQueryHandler(delete_subscription, pattern=r'subscription\.delete\.\d+'))
     dp.add_handler(CallbackQueryHandler(list_subscription, pattern=r'subscription\.list'))
+
+    dp.add_handler(CommandHandler('unsubscribe', unsubscribe_all))

@@ -11,6 +11,7 @@ Flask-DotEnv==0.1.2
 Flask-Migrate==2.5.2
 Flask-SQLAlchemy==2.4.1
 future==0.18.2
+gunicorn==20.0.0
 itsdangerous==1.1.0
 Jinja2==2.10.3
 Mako==1.1.0

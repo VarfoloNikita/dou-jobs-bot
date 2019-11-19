@@ -73,3 +73,9 @@ def update_list_page(
 
         callback_query.edit_message_reply_markup(markup)
         return
+
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]

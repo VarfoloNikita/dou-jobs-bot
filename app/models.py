@@ -24,6 +24,9 @@ class UserChat(db.Model):
             db.session.add(self)
             db.session.commit()
             db.session.refresh(self)
+            stat = Statistic(chat_id=self.id, action=Action.start)
+            db.session.add(stat)
+            db.session.commit()
             return self
         return chat
 
@@ -205,9 +208,9 @@ class VacancyChat(db.Model):
     date_created = db.Column(db.DateTime, nullable=False, default=utc_now)
     date_sent = db.Column(db.DateTime, nullable=True)
 
-    def exists(self):
+    def find(self):
         query = VacancyChat.query.filter_by(chat_id=self.chat_id, vacancy_id=self.vacancy_id)
-        return bool(query.first())
+        return query.first() or self
 
 
 

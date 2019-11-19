@@ -1,5 +1,5 @@
 import functools
-from typing import Callable
+from typing import Callable, Any
 
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from telegram.ext import (
@@ -17,7 +17,7 @@ from app.contants import DEFAULT_GREETING
 from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
 from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard
 
-HandlerFunction = Callable[[Update, CallbackContext], ...]
+HandlerFunction = Callable[[Update, CallbackContext], Any]
 
 SET_GREETING = 'greeting'
 CREATE_JOB = 'create_job'
@@ -35,7 +35,7 @@ def admin_required(handler: HandlerFunction) -> HandlerFunction:
             app.info.info('Access denied to admin handler')
             return
 
-        handler(update, context)
+        return handler(update, context)
 
     return wrapper
 
@@ -95,15 +95,38 @@ def update_greeting(update: Update, context: CallbackContext):
 
 def greeting_fallback(update: Update, context: CallbackContext):
     update.message.reply_text(
-        "Greeting fallback",
+        text="Введіть, будь ласка, текст для привітання",
         parse_mode="Markdown",
     )
 
 
+def cancel_update_greeting(update: Update, context: CallbackContext):
+    update.message.reply_text(
+        text=(
+            "Ви залишили старе привітання, якщо захочете змінити "
+            "привітання знову введіть команду /greeting знову"
+        ),
+        parse_mode="Markdown",
+    )
+    return ConversationHandler.END
+
+
 @admin_required
 def get_statistic(update: Update, context: CallbackContext):
-    # TODO:
-    pass
+    app_name = app.config['HEROKU_APP_NAME']
+    domain = app.config['HEROKU_DOMAIN']
+    host = f'https://{app_name}.{domain}'
+
+    update.message.reply_text(
+        text=(
+            f"Посилання з даними:\n\n"
+            f"Користувачі: {host}/users \n"
+            f"Дії: {host}/actions \n"
+            f"Підписки: {host}/subscriptions \n"
+        ),
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+    )
 
 
 @admin_required
@@ -262,7 +285,10 @@ def add_admin_handlers(dp: Dispatcher):
             states={
                 SET_GREETING: [MessageHandler(Filters.text, update_greeting)],
             },
-            fallbacks=[MessageHandler(Filters.text, greeting_fallback)],
+            fallbacks=[
+                MessageHandler(Filters.text, greeting_fallback),
+                CommandHandler('cancel', cancel_update_greeting),
+            ],
             allow_reentry=True,
         )
     )
@@ -274,7 +300,9 @@ def add_admin_handlers(dp: Dispatcher):
             states={
                 CREATE_JOB: [MessageHandler(Filters.text, save_post)],
             },
-            fallbacks=[MessageHandler(Filters.text, greeting_fallback)],
+            fallbacks=[
+                MessageHandler(Filters.text, greeting_fallback)
+            ],
             allow_reentry=True,
         )
     )

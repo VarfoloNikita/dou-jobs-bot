@@ -5,7 +5,7 @@ from pytz import utc
 
 from app import scheduler, app
 from app.parser import get_new_vacancies
-from app.sender import send_vacancies
+from app.sender import dispatch_vacancies
 
 
 def configure_scheduler():
@@ -22,5 +22,6 @@ def configure_scheduler():
 
 
 def job():
-    get_new_vacancies()
-    send_vacancies()
+    pass
+    # get_new_vacancies()
+    # dispatch_vacancies()
