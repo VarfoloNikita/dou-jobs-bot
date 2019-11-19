@@ -1,3 +1,4 @@
+import functools
 from typing import Callable
 
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
@@ -11,13 +12,32 @@ from telegram.ext import (
     CallbackContext,
 )
 
-from app import db, bot
+from app import db, bot, app
 from app.contants import DEFAULT_GREETING
-from app.models import Greeting, Post, City, Position, Subscription, utc_now
+from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
 from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard
+
+HandlerFunction = Callable[[Update, CallbackContext], ...]
 
 SET_GREETING = 'greeting'
 CREATE_JOB = 'create_job'
+
+
+def admin_required(handler: HandlerFunction) -> HandlerFunction:
+    """ Decorator for protecting admin handlers from unnecessary access """
+
+    @functools.wraps(handler)
+    def wrapper(update: Update, context: CallbackContext):
+        message: Message = update.message or update.callback_query.message
+        chat_id = message.chat_id
+        chat = UserChat.query.get(chat_id)
+        if not chat.is_admin:
+            app.info.info('Access denied to admin handler')
+            return
+
+        handler(update, context)
+
+    return wrapper
 
 
 def send_post(post: Post):
@@ -48,6 +68,7 @@ def _get_post_id(update: Update):
     return post_id
 
 
+@admin_required
 def get_greeting(update: Update, context: CallbackContext):
     greeting = Greeting.query.get(1)
     text = greeting.text if greeting else DEFAULT_GREETING
@@ -79,11 +100,13 @@ def greeting_fallback(update: Update, context: CallbackContext):
     )
 
 
+@admin_required
 def get_statistic(update: Update, context: CallbackContext):
     # TODO:
     pass
 
 
+@admin_required
 def create_job(update: Update, context: CallbackContext):
     update.message.reply_text(
         "Введіть нижче текст повідомлення який ви хочете розілати користувачам. "

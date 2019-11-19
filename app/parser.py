@@ -65,8 +65,7 @@ def prepare_text(text: str):
         result += f"*Обов\'язки*\n{duty}\n\n"
     if project:
         result += f"*Про проект*\n{project}\n\n"
-    text = result.strip()
-    return text
+    return result
 
 
 def parse_vacancies(data: feedparser.FeedParserDict) -> Iterator[Vacancy]:

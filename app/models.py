@@ -127,9 +127,17 @@ class Vacancy(db.Model):
     text = db.Column(db.Text, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
     date_created = db.Column(db.DateTime, nullable=False, default=utc_now)
-    date_sent = db.Column(db.DateTime, nullable=True)
+    date_processed = db.Column(db.DateTime, nullable=True)
 
-    parameters = db.relationship('VacancyParameters', backref='vacancy', lazy=True)
+    def get_not_processed_parameters(self):
+        return (
+            VacancyParameters.query
+            .filter(
+                VacancyParameters.vacancy_id == self.id,
+                VacancyParameters.date_processed.is_(None),
+            )
+            .all()
+        )
 
     def soft_add(self) -> 'Vacancy':
         chat = Vacancy.query.filter(Vacancy.url == self.url).first()
@@ -197,8 +205,10 @@ class VacancyChat(db.Model):
     date_created = db.Column(db.DateTime, nullable=False, default=utc_now)
     date_sent = db.Column(db.DateTime, nullable=True)
 
-    def get(self):
+    def exists(self):
         query = VacancyChat.query.filter_by(chat_id=self.chat_id, vacancy_id=self.vacancy_id)
-        return query.first() or self
+        return bool(query.first())
+
+
 
 

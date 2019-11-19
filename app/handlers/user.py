@@ -10,9 +10,34 @@ from telegram.ext import (
 )
 
 from app import db
+from app.contants import ADMIN_MENU, MENU, DEFAULT_GREETING
 from app.enum import AddSubscriptionStates, SubscriptionPageState
-from app.models import City, Position, Subscription
+from app.models import City, Position, Subscription, UserChat, Greeting
 from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard
+
+
+def start(update: Update, context: CallbackContext):
+
+    # create and get new user chat instance
+    chat = UserChat(
+        id=update.message.chat_id,
+        is_admin=False,
+        is_active=True,
+    )
+    chat = chat.soft_add()
+
+    # select greeting and menu items
+    menu = ADMIN_MENU if chat.is_admin else MENU
+    state = AddSubscriptionStates.city
+    greeting = 'Вітаю, мій володаре 👑'
+    if not chat.is_admin:
+        item = Greeting.query.first()
+        greeting = item.text if item else DEFAULT_GREETING
+        state = ConversationHandler.END
+
+    # greet with user
+    update.message.reply_text(f'{greeting}', parse_mode='Markdown')
+    return state
 
 
 def add_subscription(update: Update, context: CallbackContext):
@@ -187,10 +212,13 @@ def delete_subscription(update: Update, context: CallbackContext):
     list_subscription(update, context)
 
 
-def add_subscription_handlers(dp: Dispatcher):
+def add_user_handlers(dp: Dispatcher):
     dp.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler('add', add_subscription)],
+            entry_points=[
+                CommandHandler('add', add_subscription),
+                CommandHandler('start', start),
+            ],
             states={
                 AddSubscriptionStates.city: [
                     CallbackQueryHandler(add_city_navigate, pattern=r'city\.(prev|next)\.\d+'),
