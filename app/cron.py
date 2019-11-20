@@ -8,10 +8,13 @@ from app import scheduler, app, parser, sender
 
 def configure_scheduler():
     jobstores = {
-        'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI'])
+        'default': SQLAlchemyJobStore(
+            url=app.config['SQLALCHEMY_DATABASE_URI'],
+            engine_options={'pool_size': 2},
+        )
     }
 
-    scheduler.add_job(func=job, trigger="interval", minutes=5)
+    scheduler.add_job(func=job, trigger="interval", minutes=20)
     scheduler.configure(jobstores=jobstores, timezone=utc)
     scheduler.start()
 
