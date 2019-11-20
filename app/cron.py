@@ -14,7 +14,7 @@ def configure_scheduler():
         )
     }
 
-    scheduler.add_job(func=job, trigger="interval", minutes=20)
+    scheduler.add_job(func=job, trigger="interval", minutes=5)
     scheduler.configure(jobstores=jobstores, timezone=utc)
     scheduler.start()
 
