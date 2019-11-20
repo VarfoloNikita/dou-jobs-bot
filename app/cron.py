@@ -3,7 +3,7 @@ import atexit
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from pytz import utc
 
-from app import scheduler, app, parser, sender
+from app import scheduler, app, parser, sender, db
 
 
 def configure_scheduler():
@@ -26,3 +26,4 @@ def job():
     parser.get_new_vacancies()
     sender.dispatch_vacancies()
     sender.send_vacancies()
+    db.session.close()
