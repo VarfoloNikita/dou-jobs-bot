@@ -21,6 +21,7 @@ HandlerFunction = Callable[[Update, CallbackContext], Any]
 
 SET_GREETING = 'greeting'
 CREATE_JOB = 'create_job'
+SEND_PHOTO = 'send_photo'
 
 
 def admin_required(handler: HandlerFunction) -> HandlerFunction:
@@ -114,7 +115,6 @@ def cancel_update_greeting(update: Update, context: CallbackContext):
 @admin_required
 def get_statistic(update: Update, context: CallbackContext):
 
-
     update.message.reply_text(
         text=(
             f"Посилання з даними:\n\n"
@@ -160,6 +160,10 @@ def _send_job_post(post: Post, send_func: Callable):
 
     position_text = 'Додати категорію 🤖' if post.position_id else 'Додати категорію 🤖'
     button = InlineKeyboardButton(text=position_text, callback_data=f'post.{post.id}.position.page')
+    keyboards.append([button])
+
+    picture_text = 'Додати зображення 🖼️️' if post.picture else 'Змінити зображення'
+    button = InlineKeyboardButton(text=picture_text, callback_data=f'post.{post.id}.photo')
     keyboards.append([button])
 
     button = InlineKeyboardButton(text='Обублікувати 📨️', callback_data=f'post.{post.id}.publish')
@@ -254,6 +258,32 @@ def position_choose(update: Update, context: CallbackContext):
     _send_job_post(post, send_func=update.callback_query.edit_message_text)
 
 
+def ask_photo(update: Update, context: CallbackContext):
+    context.user_data['post_id'] = _get_post_id(update)
+    update.callback_query.edit_message_text(
+        text=(
+            'Надішли, будь-ласка, зображення, я прикріплю його до вашої публікації. '
+            'Якщо передумаєш добавляти чи змінювати фото введи команду /cancel'
+        ),
+    )
+
+    return SEND_PHOTO
+
+
+def add_photo(update: Update, context: CallbackContext):
+    message: Message = update.message
+    message.photo
+
+
+def add_photo_fallback(update: Update, context: CallbackContext):
+    pass
+
+
+def add_photo_cancel(update: Update, context: CallbackContext):\
+
+    return ConversationHandler.END
+
+
 def delete_post(update: Update, context: CallbackContext):
     post_id = _get_post_id(update)
     post = Post.query.get(post_id)
@@ -312,6 +342,21 @@ def add_admin_handlers(dp: Dispatcher):
     dp.add_handler(CallbackQueryHandler(position_page, pattern=r'post\.\d+\.position\.page'))
     dp.add_handler(CallbackQueryHandler(position_navigate, pattern=r'post\.\d+\.position\.(prev|next)\.\d+'))
     dp.add_handler(CallbackQueryHandler(position_choose, pattern=r'post\.\d+\.position\.\d+'))
+
+    dp.add_handler(
+        ConversationHandler(
+            entry_points=[CallbackQueryHandler(ask_photo, pattern=r'post\.\d+\.photo')],
+            states={
+                SEND_PHOTO: [MessageHandler(Filters.photo, add_photo)],
+            },
+            fallbacks=[
+                CommandHandler('cancel', add_photo_cancel),
+                MessageHandler(Filters.all, add_photo_fallback),
+            ],
+            allow_reentry=True,
+        )
+    )
+    dp.add_handler(MessageHandler(Filters.photo, add_photo))
 
     dp.add_handler(CallbackQueryHandler(delete_post, pattern=r'post\.\d+\.delete'))
     dp.add_handler(CallbackQueryHandler(publish_post, pattern=r'post\.\d+\.publish'))

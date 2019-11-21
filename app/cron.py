@@ -11,6 +11,7 @@ from app import app, parser, sender, db
 
 scheduler = BackgroundScheduler()
 
+
 def configure_scheduler():
     jobstores = {
         'default': SQLAlchemyJobStore(
