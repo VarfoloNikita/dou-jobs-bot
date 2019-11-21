@@ -1,9 +1,11 @@
 import atexit
+import requests
 
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from pytz import utc
 
 from app import scheduler, app, parser, sender
+from app.contants import HOST
 
 
 def configure_scheduler():
@@ -20,6 +22,9 @@ def configure_scheduler():
 
 
 def job():
+    # trigger host for preventing sleeping, can be safety removed on production.
+    requests.get(HOST)
+
     parser.get_new_vacancies()
     sender.dispatch_vacancies()
     sender.send_vacancies()

@@ -10,7 +10,7 @@ from telegram.ext import (
 )
 
 from app import db, parser, sender
-from app.contants import DEFAULT_GREETING
+from app.contants import DEFAULT_GREETING, ADMIN_MENU, MENU
 from app.enum import AddSubscriptionStates, SubscriptionPageState, Action
 from app.models import City, Position, Subscription, UserChat, Greeting, Stat
 from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard
@@ -24,11 +24,13 @@ def start(update: Update, context: CallbackContext):
         is_admin=False,
         is_active=True,
     )
-    chat.soft_add()
+    chat = chat.soft_add()
 
     # select greeting and menu item
     item = Greeting.query.first()
     greeting = item.text if item else DEFAULT_GREETING
+
+    greeting += f"\n\n{MENU if chat.is_admin else ADMIN_MENU}"
 
     # greet with user
     update.message.reply_text(greeting, parse_mode='Markdown')
@@ -129,7 +131,7 @@ def add_position(update: Update, context: CallbackContext):
 
 
 def cancel_add_subscription(update: Update, context: CallbackContext):
-    update.message.reply_text('Гаразд додамо підписку іного разу')
+    update.message.reply_text('Гаразд додамо підписку іншого разу')
     return ConversationHandler.END
 
 

@@ -1,5 +1,4 @@
 import functools
-import os
 from typing import Callable, Any
 
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
@@ -14,7 +13,7 @@ from telegram.ext import (
 )
 
 from app import db, bot, app
-from app.contants import DEFAULT_GREETING
+from app.contants import DEFAULT_GREETING, HOST
 from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
 from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard
 
@@ -114,14 +113,14 @@ def cancel_update_greeting(update: Update, context: CallbackContext):
 
 @admin_required
 def get_statistic(update: Update, context: CallbackContext):
-    host = 'https://dou-jobs-telegram-bot.herokuapp.com'
+
 
     update.message.reply_text(
         text=(
             f"Посилання з даними:\n\n"
-            f"Користувачі: {host}/users \n"
-            f"Дії: {host}/actions \n"
-            f"Підписки: {host}/subscriptions \n"
+            f"Користувачі: {HOST}/users \n"
+            f"Дії: {HOST}/actions \n"
+            f"Підписки: {HOST}/subscriptions \n"
         ),
         parse_mode="Markdown",
         disable_web_page_preview=True,
@@ -131,7 +130,7 @@ def get_statistic(update: Update, context: CallbackContext):
 @admin_required
 def create_job(update: Update, context: CallbackContext):
     update.message.reply_text(
-        "Введіть нижче текст повідомлення який ви хочете розілати користувачам. "
+        "Введіть нижче текст повідомлення який ви хочете розіслати користувачам. "
         "Я не надсилатиму сповіщення відразу ж, лише тоді коли ви натиснете "
         "кнопку 'Опублікувати'.",
         parse_mode="Markdown",
@@ -154,13 +153,14 @@ def save_post(update: Update, context: CallbackContext):
 def _send_job_post(post: Post, send_func: Callable):
     # build reply text
     keyboards = []
-    if not post.city_id:
-        button = InlineKeyboardButton(text='Додати місто 🏙️️', callback_data=f'post.{post.id}.city.page')
-        keyboards.append([button])
 
-    if not post.position_id:
-        button = InlineKeyboardButton(text='Додати категорію 🤖', callback_data=f'post.{post.id}.position.page')
-        keyboards.append([button])
+    city_text = 'Змінити місто 🏙️' if post.city_id else 'Додати місто 🏙️'
+    button = InlineKeyboardButton(text=city_text, callback_data=f'post.{post.id}.city.page')
+    keyboards.append([button])
+
+    position_text = 'Додати категорію 🤖' if post.position_id else 'Додати категорію 🤖'
+    button = InlineKeyboardButton(text=position_text, callback_data=f'post.{post.id}.position.page')
+    keyboards.append([button])
 
     button = InlineKeyboardButton(text='Обублікувати 📨️', callback_data=f'post.{post.id}.publish')
     keyboards.append([button])
