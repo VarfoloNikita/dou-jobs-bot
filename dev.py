@@ -5,8 +5,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app import updater, bot, cron
 import logging
 
-scheduler = BackgroundScheduler()
-
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,

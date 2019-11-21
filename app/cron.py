@@ -2,11 +2,14 @@ import atexit
 import requests
 
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import utc
 
 from app.contants import HOST
-from app import scheduler, app, parser, sender, db
+from app import app, parser, sender, db
 
+
+scheduler = BackgroundScheduler()
 
 def configure_scheduler():
     jobstores = {
