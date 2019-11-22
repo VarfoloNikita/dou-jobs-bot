@@ -10,7 +10,7 @@ def configure_scheduler():
     jobstores = {
         'default': SQLAlchemyJobStore(
             url=app.config['SQLALCHEMY_DATABASE_URI'],
-            engine_options={'pool_size': 2},
+            engine_options={'pool_size': 1},
         )
     }
 
