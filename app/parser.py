@@ -126,8 +126,8 @@ def update_new_vacancies(city: City, position: Position):
             vacancy_id=vacancy.id,
         )
         if parameters.exists():
-            app.logger.info('Skip entire feed such as vacancy exists')
-            break
+            app.logger.info(f'Vacancy exists, skip: {vacancy.title}')
+            continue
 
         db.session.add(parameters)
         db.session.commit()

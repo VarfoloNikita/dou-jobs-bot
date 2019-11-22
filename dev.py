@@ -1,6 +1,8 @@
 import os
 
-from app import updater, bot
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from app import updater, bot, cron
 import logging
 
 logging.basicConfig(
@@ -27,3 +29,4 @@ if __name__ == '__main__':
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
+    cron.configure_scheduler()
