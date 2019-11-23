@@ -19,5 +19,5 @@ def get_new_posts(*args, **kwargs):
 
     parser.get_new_vacancies()
     sender.dispatch_vacancies()
-    sender.send_vacancies()
+    sender.broadcast_vacancies()
     db.session.close()

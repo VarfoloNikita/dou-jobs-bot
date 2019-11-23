@@ -15,7 +15,7 @@ from telegram.ext import (
 from app import db, bot, app
 from app.contants import DEFAULT_GREETING, HOST
 from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
-from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard
+from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard, AnyHandler
 
 HandlerFunction = Callable[[Update, CallbackContext], Any]
 
@@ -33,7 +33,7 @@ def admin_required(handler: HandlerFunction) -> HandlerFunction:
         chat_id = message.chat_id
         chat = UserChat.query.get(chat_id)
         if not chat.is_admin:
-            app.info.info('Access denied to admin handler')
+            app.logger.info('Access denied to admin handler')
             return
 
         return handler(update, context)
@@ -132,10 +132,18 @@ def create_job(update: Update, context: CallbackContext):
     update.message.reply_text(
         "Введіть нижче текст повідомлення який ви хочете розіслати користувачам. "
         "Я не надсилатиму сповіщення відразу ж, лише тоді коли ви натиснете "
-        "кнопку 'Опублікувати'.",
+        "кнопку 'Опублікувати'. Для повідомлення використовується Markdown. \n"
+        "Щоб дабавити зображення під текстом, вставте посилання на це зображення в "
+        "такому форматі: [[ ]](https://picsum.photos/id/501/536/354)",
         parse_mode="Markdown",
+        disable_web_page_preview=True,
     )
     return CREATE_JOB
+
+
+def post_fallback(update: Update, context: CallbackContext):
+    message: Message = update.message or update.callback_query.message
+    message.reply_text("Введіть, будь ласка, текст. Зображення ви можете прикріпити пізніше.")
 
 
 def save_post(update: Update, context: CallbackContext):
@@ -149,24 +157,22 @@ def save_post(update: Update, context: CallbackContext):
 
     _send_job_post(post, send_func=message.reply_text)
 
+    return ConversationHandler.END
+
 
 def _send_job_post(post: Post, send_func: Callable):
     # build reply text
     keyboards = []
 
-    city_text = 'Змінити місто 🏙️' if post.city_id else 'Додати місто 🏙️'
+    city_text = 'Змінити місто 🏙️' if post.city_id is not None else 'Додати місто 🏙️'
     button = InlineKeyboardButton(text=city_text, callback_data=f'post.{post.id}.city.page')
     keyboards.append([button])
 
-    position_text = 'Додати категорію 🤖' if post.position_id else 'Додати категорію 🤖'
+    position_text = 'Змінити категорію 🤖' if post.position_id is not None else 'Додати категорію 🤖'
     button = InlineKeyboardButton(text=position_text, callback_data=f'post.{post.id}.position.page')
     keyboards.append([button])
 
-    picture_text = 'Додати зображення 🖼️️' if post.picture else 'Змінити зображення'
-    button = InlineKeyboardButton(text=picture_text, callback_data=f'post.{post.id}.photo')
-    keyboards.append([button])
-
-    button = InlineKeyboardButton(text='Обублікувати 📨️', callback_data=f'post.{post.id}.publish')
+    button = InlineKeyboardButton(text='Опублікувати 📨️', callback_data=f'post.{post.id}.publish')
     keyboards.append([button])
 
     button = InlineKeyboardButton(text='Видалити ❌', callback_data=f'post.{post.id}.delete')
@@ -258,32 +264,6 @@ def position_choose(update: Update, context: CallbackContext):
     _send_job_post(post, send_func=update.callback_query.edit_message_text)
 
 
-def ask_photo(update: Update, context: CallbackContext):
-    context.user_data['post_id'] = _get_post_id(update)
-    update.callback_query.edit_message_text(
-        text=(
-            'Надішли, будь-ласка, зображення, я прикріплю його до вашої публікації. '
-            'Якщо передумаєш добавляти чи змінювати фото введи команду /cancel'
-        ),
-    )
-
-    return SEND_PHOTO
-
-
-def add_photo(update: Update, context: CallbackContext):
-    message: Message = update.message
-    message.photo
-
-
-def add_photo_fallback(update: Update, context: CallbackContext):
-    pass
-
-
-def add_photo_cancel(update: Update, context: CallbackContext):\
-
-    return ConversationHandler.END
-
-
 def delete_post(update: Update, context: CallbackContext):
     post_id = _get_post_id(update)
     post = Post.query.get(post_id)
@@ -315,8 +295,8 @@ def add_admin_handlers(dp: Dispatcher):
                 SET_GREETING: [MessageHandler(Filters.text, update_greeting)],
             },
             fallbacks=[
-                MessageHandler(Filters.text, greeting_fallback),
                 CommandHandler('cancel', cancel_update_greeting),
+                AnyHandler(greeting_fallback),
             ],
             allow_reentry=True,
         )
@@ -329,9 +309,7 @@ def add_admin_handlers(dp: Dispatcher):
             states={
                 CREATE_JOB: [MessageHandler(Filters.text, save_post)],
             },
-            fallbacks=[
-                MessageHandler(Filters.text, greeting_fallback)
-            ],
+            fallbacks=[AnyHandler(post_fallback)],
             allow_reentry=True,
         )
     )
@@ -342,21 +320,6 @@ def add_admin_handlers(dp: Dispatcher):
     dp.add_handler(CallbackQueryHandler(position_page, pattern=r'post\.\d+\.position\.page'))
     dp.add_handler(CallbackQueryHandler(position_navigate, pattern=r'post\.\d+\.position\.(prev|next)\.\d+'))
     dp.add_handler(CallbackQueryHandler(position_choose, pattern=r'post\.\d+\.position\.\d+'))
-
-    dp.add_handler(
-        ConversationHandler(
-            entry_points=[CallbackQueryHandler(ask_photo, pattern=r'post\.\d+\.photo')],
-            states={
-                SEND_PHOTO: [MessageHandler(Filters.photo, add_photo)],
-            },
-            fallbacks=[
-                CommandHandler('cancel', add_photo_cancel),
-                MessageHandler(Filters.all, add_photo_fallback),
-            ],
-            allow_reentry=True,
-        )
-    )
-    dp.add_handler(MessageHandler(Filters.photo, add_photo))
 
     dp.add_handler(CallbackQueryHandler(delete_post, pattern=r'post\.\d+\.delete'))
     dp.add_handler(CallbackQueryHandler(publish_post, pattern=r'post\.\d+\.publish'))

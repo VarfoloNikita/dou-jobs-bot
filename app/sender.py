@@ -1,3 +1,5 @@
+from typing import List
+
 import sqlalchemy as sa
 
 from app import db, app, bot
@@ -6,11 +8,21 @@ from app.utils import chunks
 
 
 def send_vacancy_to_chat(chat: VacancyChat, vacancy: Vacancy):
-    bot.send_message(
-        chat_id=chat.chat_id,
-        text=vacancy.text,
-        parse_mode='Markdown',
-    )
+    try:
+        bot.send_message(
+            chat_id=chat.chat_id,
+            text=vacancy.text,
+            parse_mode='Markdown',
+        )
+        chat.date_sent = utc_now()
+    except Exception as exception:
+        chat.attempt += 1
+        app.logger.exception(
+            msg='Error on sending vacancy',
+            exc_info=exception,
+        )
+
+    db.session.commit()
 
 
 def dispatch_vacancies():
@@ -42,12 +54,10 @@ def dispatch_vacancies():
                 vacancy_id=vacancy.id,
                 attempt=0,
             )
-            chat = chat.find()
-            db.session.add(chat)
-            db.session.commit()
+            chat.soft_add()
 
 
-def send_vacancies():
+def broadcast_vacancies():
     vacancies = (
         db.session.query(VacancyChat, Vacancy).join(Vacancy)
         .filter(
@@ -56,17 +66,16 @@ def send_vacancies():
         )
     )
     for chat, vacancy in vacancies:
-        try:
-            send_vacancy_to_chat(chat, vacancy)
-            chat.date_sent = utc_now()
-        except Exception as exception:
-            chat.attempt += 1
-            print(vacancy.text)
-            app.logger.exception(
-                msg='Error on sending vacancy',
-                exc_info=exception,
-            )
+        send_vacancy_to_chat(chat, vacancy)
 
-        db.session.commit()
 
+def send_vacancies(vacancies: List[Vacancy], chat_id: str):
+    for vacancy in vacancies:
+        chat = VacancyChat(
+            chat_id=chat_id,
+            vacancy_id=vacancy.id,
+            attempt=0,
+        )
+        chat = chat.soft_add()
+        send_vacancy_to_chat(chat, vacancy)
 

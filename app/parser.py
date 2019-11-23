@@ -1,7 +1,7 @@
 import re
 import ssl
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator, List
 from urllib.parse import quote
 
 import feedparser
@@ -111,13 +111,15 @@ def parse_vacancies(data: feedparser.FeedParserDict) -> Iterator[Vacancy]:
         yield Vacancy(url=url, title=entry.title, text=result, date=date)
 
 
-def update_new_vacancies(city: City, position: Position):
+def update_new_vacancies(city: City, position: Position) -> List[Vacancy]:
     app.logger.info(f'Get feed for {city.name}, {position.name}')
 
     url = build_feed_url(city, position)
     data = feedparser.parse(url)
+    vacancies = []
     for vacancy in parse_vacancies(data):
         vacancy = vacancy.soft_add()
+        vacancies.append(vacancy)
 
         # insert new vacancy parameters
         parameters = VacancyParameters(
@@ -132,6 +134,8 @@ def update_new_vacancies(city: City, position: Position):
         db.session.add(parameters)
         db.session.commit()
         app.logger.info(f'New vacancy was added: {vacancy.title}')
+
+    return vacancies
 
 
 def get_new_vacancies():

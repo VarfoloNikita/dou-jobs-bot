@@ -13,11 +13,10 @@ from app import db, parser, sender
 from app.contants import DEFAULT_GREETING, ADMIN_MENU, MENU
 from app.enum import AddSubscriptionStates, SubscriptionPageState, Action
 from app.models import City, Position, Subscription, UserChat, Greeting, Stat
-from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard
+from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard, AnyHandler
 
 
 def start(update: Update, context: CallbackContext):
-
     # create and get new user chat instance
     chat = UserChat(
         id=update.message.chat_id,
@@ -83,7 +82,12 @@ def add_position_navigate(update: Update, context: CallbackContext):
 
 
 def add_subscription_fallback(update: Update, context: CallbackContext):
-    update.message.reply_text("Оберіть варіант зі списку вище")
+    update.message.reply_text(
+        text=(
+            "Ви ще незавершили додавання нової підписки. Оберіть варіант зі списку "
+            "вище або введіть команду /cancel, щоб відхили додавання підписки."
+        ),
+    )
 
 
 def add_position(update: Update, context: CallbackContext):
@@ -123,9 +127,13 @@ def add_position(update: Update, context: CallbackContext):
     db.session.add(stat)
     db.session.commit()
 
-    parser.update_new_vacancies(city, position)
-    sender.dispatch_vacancies()
-    sender.send_vacancies()
+    vacancies = parser.update_new_vacancies(city, position)
+    if not vacancies:
+        message.reply_text(
+            text=f"🤷‍♀️ На жаль, у місті *{city.name}* немає вакансій в категорії *{position.name}*",
+            parse_mode='Markdown',
+        )
+    sender.send_vacancies(vacancies, message.chat_id)
 
     return ConversationHandler.END
 
@@ -136,15 +144,18 @@ def cancel_add_subscription(update: Update, context: CallbackContext):
 
 
 def list_subscription(update: Update, context: CallbackContext):
+    message: Message = update.message or update.callback_query.message
     send_function = (
-        update.message.reply_text
+        message.reply_text
         if update.message else
         update.callback_query.edit_message_text
     )
-    if update.callback_query:
-        update.callback_query.answer()
+    chat_id = message.chat_id
+    items = (
+        db.session.query(Subscription, Position, City).join(Position).join(City)
+        .filter(Subscription.chat_id == chat_id).all()
+    )
 
-    items = db.session.query(Subscription, Position, City).join(Position).join(City).all()
     if not items:
         send_function(text=(
             "У вас немає підписок, щоб піписатися на нові вакансії "
@@ -173,7 +184,7 @@ def choose_subscription(update: Update, context: CallbackContext):
     _, _, suffix = callback_query.data.strip().split('.')
     subscription, position, city = (
         db.session.query(Subscription, Position, City).join(Position).join(City)
-        .filter(Subscription.id == suffix).first()
+            .filter(Subscription.id == suffix).first()
     )
     keyboards = [
         [
@@ -224,10 +235,11 @@ def delete_subscription(update: Update, context: CallbackContext):
 
 
 def unsubscribe_all(update: Update, context: CallbackContext):
-    subscriptions = db.session.query(Subscription).filter_by(chat_id=update.message.chat_id)
-    subscriptions.delete(synchronize_session=False)
+    chat_id = update.message.chat_id
+    subscriptions = db.session.query(Subscription).filter_by(chat_id=chat_id)
+    subscriptions.delete(synchronize_session='fetch')
 
-    stat = Stat(chat_id=update.message.chat_id, action=Action.unsubscribe.value)
+    stat = Stat(chat_id=chat_id, action=Action.unsubscribe.value)
     db.session.add(stat)
     db.session.commit()
 
@@ -253,7 +265,7 @@ def add_user_handlers(dp: Dispatcher):
             },
             fallbacks=[
                 CommandHandler('cancel', cancel_add_subscription),
-                MessageHandler(Filters.text, add_subscription_fallback),
+                AnyHandler(add_subscription_fallback),
             ],
             allow_reentry=True,
         )

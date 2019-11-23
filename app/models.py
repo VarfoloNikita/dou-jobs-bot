@@ -106,6 +106,7 @@ class Post(db.Model):
     city_id = db.Column(db.Integer, db.ForeignKey('city.id'), nullable=True)
     position_id = db.Column(db.Integer, db.ForeignKey('position.id'), nullable=True)
     date_sent = db.Column(db.DateTime, nullable=True)
+    image_id = db.Column(db.String(length=512), nullable=True)
 
     @property
     def is_sent(self):
@@ -204,6 +205,12 @@ class VacancyChat(db.Model):
     def find(self):
         query = VacancyChat.query.filter_by(chat_id=self.chat_id, vacancy_id=self.vacancy_id)
         return query.first() or self
+
+    def soft_add(self):
+        chat = self.find()
+        db.session.add(chat)
+        db.session.commit()
+        return chat
 
 
 

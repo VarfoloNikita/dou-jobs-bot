@@ -2,6 +2,7 @@ from typing import Callable
 
 from sqlalchemy.orm import Query
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from telegram.ext import Handler
 
 from app.contants import PAGINATION_SIZE
 from app.models import City, Position
@@ -79,3 +80,8 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+
+class AnyHandler(Handler):
+    def check_update(self, update):
+        return True
