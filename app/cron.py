@@ -13,7 +13,7 @@ def configure_scheduler():
     )
 
 
-def get_new_posts():
+def get_new_posts(*args, **kwargs):
     # trigger host for preventing sleeping, can be safety removed on production.
     requests.get(HOST)
 
