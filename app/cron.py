@@ -1,34 +1,19 @@
-import atexit
+from datetime import timedelta
+
 import requests
 
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
-from apscheduler.schedulers.background import BackgroundScheduler
-from pytz import utc
-
+from app import parser, sender, db, updater
 from app.contants import HOST
-from app import app, parser, sender, db
-
-
-scheduler = BackgroundScheduler()
 
 
 def configure_scheduler():
-    jobstores = {
-        'default': SQLAlchemyJobStore(
-            url=app.config['SQLALCHEMY_DATABASE_URI'],
-            engine_options={'pool_size': 1},
-        )
-    }
-
-    scheduler.add_job(func=job, trigger="interval", minutes=5)
-    scheduler.configure(jobstores=jobstores, timezone=utc)
-    scheduler.start()
-
-    # Shut down the scheduler when exiting the app
-    atexit.register(lambda: scheduler.shutdown())
+    updater.job_queue.run_repeating(
+        callback=get_new_posts,
+        interval=timedelta(minutes=5),
+    )
 
 
-def job():
+def get_new_posts():
     # trigger host for preventing sleeping, can be safety removed on production.
     requests.get(HOST)
 
