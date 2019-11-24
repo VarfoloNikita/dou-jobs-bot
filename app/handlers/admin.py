@@ -183,11 +183,11 @@ def _send_job_post(post: Post, send_func: Callable):
         f"*Вакансія:*\n"
         f"{post.text}\n\n"
     )
-    if post.city_id:
+    if post.city_id is not None:
         city = City.query.get(post.city_id)
         message_text += f'*Місто:*\n{city.name}\n\n'
 
-    if post.position_id:
+    if post.position_id is not None:
         city = Position.query.get(post.position_id)
         message_text += f'*Категорія:*\n{city.name}\n\n'
 
