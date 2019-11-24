@@ -311,7 +311,7 @@ def add_admin_handlers(dp: Dispatcher):
             },
             fallbacks=[AnyHandler(post_fallback)],
             allow_reentry=True,
-        )
+        ),
     )
     dp.add_handler(CallbackQueryHandler(city_page, pattern=r'post\.\d+\.city\.page'))
     dp.add_handler(CallbackQueryHandler(city_navigate, pattern=r'post\.\d+\.city\.(prev|next)\.\d+'))
