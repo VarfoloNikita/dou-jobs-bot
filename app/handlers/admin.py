@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 
 from app import db, bot, app
-from app.contants import DEFAULT_GREETING, HOST
+from app.contants import DEFAULT_GREETING, HOST, DEFAULT_GROUP
 from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
 from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard, AnyHandler
 
@@ -283,6 +283,11 @@ def publish_post(update: Update, context: CallbackContext):
     _send_job_post(post, send_func=update.callback_query.edit_message_text)
 
 
+def cancel_create_post(update: Update, context: CallbackContext):
+    update.message.reply_text("Гаразд, ви відхили створення повідомлення")
+    return ConversationHandler.END
+
+
 def print_bad_query(update: Update, context: CallbackContext):
     update.callback_query.answer()
 
@@ -296,12 +301,14 @@ def add_admin_handlers(dp: Dispatcher):
             },
             fallbacks=[
                 CommandHandler('cancel', cancel_update_greeting),
+                MessageHandler(Filters.command, cancel_update_greeting),
                 AnyHandler(greeting_fallback),
             ],
             allow_reentry=True,
-        )
+        ),
+        group=1,
     )
-    dp.add_handler(CommandHandler('stat', get_statistic))
+    dp.add_handler(CommandHandler('stat', get_statistic), group=DEFAULT_GROUP)
 
     dp.add_handler(
         ConversationHandler(
@@ -309,19 +316,23 @@ def add_admin_handlers(dp: Dispatcher):
             states={
                 CREATE_JOB: [MessageHandler(Filters.text, save_post)],
             },
-            fallbacks=[AnyHandler(post_fallback)],
+            fallbacks=[
+                CommandHandler('cancel', cancel_create_post),
+                MessageHandler(Filters.command, cancel_create_post),
+                AnyHandler(post_fallback)
+            ],
             allow_reentry=True,
         ),
+        group=2,
     )
-    dp.add_handler(CallbackQueryHandler(city_page, pattern=r'post\.\d+\.city\.page'))
-    dp.add_handler(CallbackQueryHandler(city_navigate, pattern=r'post\.\d+\.city\.(prev|next)\.\d+'))
-    dp.add_handler(CallbackQueryHandler(city_choose, pattern=r'post\.\d+\.city\.\d+'))
+    dp.add_handler(CallbackQueryHandler(city_page, pattern=r'post\.\d+\.city\.page'), group=DEFAULT_GROUP)
+    dp.add_handler(CallbackQueryHandler(city_navigate, pattern=r'post\.\d+\.city\.(prev|next)\.\d+'), group=DEFAULT_GROUP)
+    dp.add_handler(CallbackQueryHandler(city_choose, pattern=r'post\.\d+\.city\.\d+'), group=DEFAULT_GROUP)
 
-    dp.add_handler(CallbackQueryHandler(position_page, pattern=r'post\.\d+\.position\.page'))
-    dp.add_handler(CallbackQueryHandler(position_navigate, pattern=r'post\.\d+\.position\.(prev|next)\.\d+'))
-    dp.add_handler(CallbackQueryHandler(position_choose, pattern=r'post\.\d+\.position\.\d+'))
+    dp.add_handler(CallbackQueryHandler(position_page, pattern=r'post\.\d+\.position\.page'), group=DEFAULT_GROUP)
+    dp.add_handler(CallbackQueryHandler(position_navigate, pattern=r'post\.\d+\.position\.(prev|next)\.\d+'), group=DEFAULT_GROUP)
+    dp.add_handler(CallbackQueryHandler(position_choose, pattern=r'post\.\d+\.position\.\d+'), group=DEFAULT_GROUP)
 
-    dp.add_handler(CallbackQueryHandler(delete_post, pattern=r'post\.\d+\.delete'))
-    dp.add_handler(CallbackQueryHandler(publish_post, pattern=r'post\.\d+\.publish'))
-    dp.add_handler(CallbackQueryHandler(print_bad_query))
+    dp.add_handler(CallbackQueryHandler(delete_post, pattern=r'post\.\d+\.delete'), group=DEFAULT_GROUP)
+    dp.add_handler(CallbackQueryHandler(publish_post, pattern=r'post\.\d+\.publish'), group=DEFAULT_GROUP)
 
