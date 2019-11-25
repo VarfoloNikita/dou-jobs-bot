@@ -11,10 +11,10 @@ from telegram.ext import (
 )
 
 from app import db, parser, sender, updater
-from app.contants import DEFAULT_GREETING, ADMIN_MENU, MENU, ALL_COMMANDS, DEFAULT_GROUP
+from app.contants import DEFAULT_GREETING, ADMIN_MENU, MENU, DEFAULT_GROUP
 from app.enum import AddSubscriptionStates, SubscriptionPageState, Action
 from app.models import City, Position, Subscription, UserChat, Greeting, Stat
-from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard, AnyHandler
+from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard, AnyHandler, get_keyboard_menu
 
 
 def start(update: Update, context: CallbackContext):
@@ -33,7 +33,10 @@ def start(update: Update, context: CallbackContext):
     greeting += f"\n\n{MENU if chat.is_admin else ADMIN_MENU}"
 
     # greet with user
-    update.message.reply_text(greeting, parse_mode='Markdown')
+    update.message.reply_text(
+        text=greeting,
+        parse_mode='Markdown',
+    )
     return add_subscription(update, context)
 
 
@@ -123,6 +126,7 @@ def add_position(update: Update, context: CallbackContext):
             f"вакансій за вашими параметрами."
         ),
         parse_mode='Markdown',
+        reply_markup=get_keyboard_menu(update),
     )
     stat = Stat(chat_id=message.chat_id, action=Action.subscribed.value)
     db.session.add(stat)
@@ -140,7 +144,10 @@ def add_position(update: Update, context: CallbackContext):
 
 
 def cancel_add_subscription(update: Update, context: CallbackContext):
-    update.message.reply_text('Гаразд додамо підписку іншого разу')
+    update.message.reply_text(
+        text='Гаразд додамо підписку іншого разу',
+        reply_markup=get_keyboard_menu(update),
+    )
     return ConversationHandler.END
 
 
@@ -190,11 +197,11 @@ def choose_subscription(update: Update, context: CallbackContext):
     keyboards = [
         [
             InlineKeyboardButton(
-                text='Повернутися назад ↩️',
+                text='↩️ Назад',
                 callback_data='subscription.list',
             ),
             InlineKeyboardButton(
-                text='Скасувати підписку ❌',
+                text='❌ Видалати',
                 callback_data=f'subscription.delete.{subscription.id}',
             ),
         ]

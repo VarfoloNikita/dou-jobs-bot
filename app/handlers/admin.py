@@ -54,6 +54,7 @@ def send_post(post: Post):
             chat_id=subscription.chat_id,
             text=post.text,
             parse_mode='Markdown',
+            disable_web_page_preview=False,
         )
 
     post.date_sent = utc_now()

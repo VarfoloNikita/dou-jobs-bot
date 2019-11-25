@@ -3,8 +3,6 @@ from telegram.ext import (
     CommandHandler,
     CallbackContext,
     Dispatcher,
-    MessageHandler,
-    Filters,
 )
 
 from app.contants import MENU, ADMIN_MENU, DEFAULT_GROUP

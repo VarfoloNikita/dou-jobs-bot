@@ -1,11 +1,12 @@
 from typing import Callable
 
 from sqlalchemy.orm import Query
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardMarkup, \
+    KeyboardButton
 from telegram.ext import Handler
 
 from app.contants import PAGINATION_SIZE
-from app.models import City, Position
+from app.models import City, Position, UserChat
 
 
 def get_pagination_keyboard(query: Query, prefix: str, offset: int = 0) -> InlineKeyboardMarkup:
@@ -24,12 +25,12 @@ def get_pagination_keyboard(query: Query, prefix: str, offset: int = 0) -> Inlin
     has_prev = offset > 0
     control = [
         # show previous button only if offset is more than 0
-        InlineKeyboardButton('⏮️', callback_data=f'{prefix}.prev.{offset}')
+        InlineKeyboardButton('⬅️️️', callback_data=f'{prefix}.prev.{offset}')
         if has_prev else
         InlineKeyboardButton(' ', callback_data=f'{prefix}.prev.None'),
 
         # show next button only when there is not next city in list
-        InlineKeyboardButton('⏭️', callback_data=f'{prefix}.next.{offset}')
+        InlineKeyboardButton('➡️', callback_data=f'{prefix}.next.{offset}')
         if has_next else
         InlineKeyboardButton(' ', callback_data=f'{prefix}.next.None'),
     ]
@@ -80,6 +81,24 @@ def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+
+def get_keyboard_menu(update: Update):
+    message = update.message or update.callback_query.message
+    chat = UserChat.query.get(message.chat_id)
+    custom_keyboard = [
+        [KeyboardButton(text="/list - Список підписок")],
+        [KeyboardButton(text="/add - Додати підписку")],
+        [KeyboardButton(text="/help - Допомога")],
+        [KeyboardButton(text="/unsubscribe - Відписатися від сповіщень")],
+    ]
+    if chat.is_admin:
+        custom_keyboard.extend([
+            [KeyboardButton(text="/stat - Отримати статистику")],
+            [KeyboardButton(text="/greeting - Змінити привітання ")],
+            [KeyboardButton(text="/post - Створити оголешення")],
+        ])
+    return ReplyKeyboardMarkup(custom_keyboard)
 
 
 class AnyHandler(Handler):
