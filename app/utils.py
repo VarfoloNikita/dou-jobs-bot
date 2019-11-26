@@ -1,8 +1,8 @@
-from typing import Callable
+from typing import Callable, List, Optional
 
 from sqlalchemy.orm import Query
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardMarkup, \
-    KeyboardButton
+    KeyboardButton, PhotoSize
 from telegram.ext import Handler
 
 from app.contants import PAGINATION_SIZE
@@ -99,6 +99,17 @@ def get_keyboard_menu(update: Update):
             [KeyboardButton(text="/post - Створити оголешення")],
         ])
     return ReplyKeyboardMarkup(custom_keyboard)
+
+
+def get_largest_photo(photos: List[PhotoSize]) -> Optional[str]:
+    largest = None
+    largest_size = 0
+    for photo in photos:
+        if photo.file_size > largest_size:
+            largest = photo.file_id
+            largest_size = photo.file_size
+
+    return largest
 
 
 class AnyHandler(Handler):

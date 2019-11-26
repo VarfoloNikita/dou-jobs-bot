@@ -15,13 +15,17 @@ from telegram.ext import (
 from app import db, bot, app
 from app.contants import DEFAULT_GREETING, HOST, DEFAULT_GROUP
 from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
-from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard, AnyHandler
+from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard, AnyHandler, get_largest_photo
 
 HandlerFunction = Callable[[Update, CallbackContext], Any]
 
 SET_GREETING = 'greeting'
 CREATE_JOB = 'create_job'
 SEND_PHOTO = 'send_photo'
+
+
+def _empty_callback(update: Update, context: CallbackContext):
+    update.callback_query.answer()
 
 
 def admin_required(handler: HandlerFunction) -> HandlerFunction:
@@ -50,12 +54,22 @@ def send_post(post: Post):
 
     items = query.all()
     for subscription in items:
-        bot.send_message(
-            chat_id=subscription.chat_id,
-            text=post.text,
-            parse_mode='Markdown',
-            disable_web_page_preview=False,
-        )
+        if post.image_id:
+            bot.send_photo(
+                chat_id=subscription.chat_id,
+                photo=post.image_id,
+                caption=post.text,
+                parse_mode="Markdown",
+                disable_web_page_preview=False,
+            )
+
+        else:
+            bot.send_message(
+                chat_id=subscription.chat_id,
+                text=post.text,
+                parse_mode='Markdown',
+                disable_web_page_preview=False,
+            )
 
     post.date_sent = utc_now()
     db.session.commit()
@@ -135,7 +149,7 @@ def create_job(update: Update, context: CallbackContext):
         "Я не надсилатиму сповіщення відразу ж, лише тоді коли ви натиснете "
         "кнопку 'Опублікувати'. Для повідомлення використовується Markdown. \n"
         "Щоб дабавити зображення під текстом, вставте посилання на це зображення в "
-        "такому форматі: [[ ]](https://picsum.photos/id/501/536/354)",
+        "такому форматі: [[.]](https://picsum.photos/id/501/536/354)",
         parse_mode="Markdown",
         disable_web_page_preview=True,
     )
@@ -148,72 +162,98 @@ def post_fallback(update: Update, context: CallbackContext):
 
 
 def save_post(update: Update, context: CallbackContext):
+
     message: Message = update.message
-    job_text: str = message.text
+    job_text: str = message.text or message.caption or ''
+
+    photo_id = get_largest_photo(message.photo)
 
     # Insert raw post to database
-    post = Post(text=job_text)
+    post = Post(text=job_text, image_id=photo_id)
     db.session.add(post)
     db.session.commit()
 
-    _send_job_post(post, send_func=message.reply_text)
+    _send_job_post(post, update)
 
     return ConversationHandler.END
 
 
-def _send_job_post(post: Post, send_func: Callable):
+def _send_job_post(post: Post, update: Update):
     # build reply text
-    keyboards = []
+    buttons = []
 
-    city_text = 'Змінити місто 🏙️' if post.city_id is not None else 'Додати місто 🏙️'
+    city = City.query.get(post.city_id) if post.city_id is not None else None
+    position = Position.query.get(post.position_id) if post.position_id is not None else None
+
+    city_text = f'Змінити місто ({city.name})' if city else 'Додати місто 🏙️'
     button = InlineKeyboardButton(text=city_text, callback_data=f'post.{post.id}.city.page')
-    keyboards.append([button])
+    buttons.append([button])
 
-    position_text = 'Змінити категорію 🤖' if post.position_id is not None else 'Додати категорію 🤖'
+    position_text = f'Змінити категорію ({position.name})' if position else 'Додати категорію 🤖'
     button = InlineKeyboardButton(text=position_text, callback_data=f'post.{post.id}.position.page')
-    keyboards.append([button])
+    buttons.append([button])
 
     button = InlineKeyboardButton(text='Опублікувати 📨️', callback_data=f'post.{post.id}.publish')
-    keyboards.append([button])
+    buttons.append([button])
 
     button = InlineKeyboardButton(text='Видалити ❌', callback_data=f'post.{post.id}.delete')
-    keyboards.append([button])
+    buttons.append([button])
 
-    markup = InlineKeyboardMarkup(keyboards, resize_keyboard=True)
-    message_text = (
-        f"*Вакансія:*\n"
-        f"{post.text}\n\n"
-    )
-    if post.city_id is not None:
-        city = City.query.get(post.city_id)
-        message_text += f'*Місто:*\n{city.name}\n\n'
-
-    if post.position_id is not None:
-        city = Position.query.get(post.position_id)
-        message_text += f'*Категорія:*\n{city.name}\n\n'
+    message_text = post.text
 
     if post.is_sent:
-        message_text += f'*Статус:* Відправлено ✔️ 🍻 🎉 🍾'
-        markup = None
+        values = '/'.join(i.name for i in [city, position] if i)
+        text = 'Відправлено 🎉 {}'.format(f'({values})' if values else '')
+        button = InlineKeyboardButton(text=text, callback_data=f'post.{post.id}.none')
+        buttons = [[button]]
 
-    send_func(
-        text=message_text,
-        parse_mode="Markdown",
-        reply_markup=markup,
-    )
+    markup = InlineKeyboardMarkup(buttons, resize_keyboard=True)
+    message: Message = update.message or update.callback_query.message
+    if update.callback_query:
+        if post.image_id:
+            message.edit_caption(
+                caption=message_text,
+                reply_markup=markup,
+                parse_mode="Markdown",
+            )
+        else:
+            message.edit_text(
+                text=message_text,
+                reply_markup=markup,
+                parse_mode="Markdown",
+            )
+        return
+
+    if post.image_id is not None:
+        message.reply_photo(
+            photo=post.image_id,
+            caption=message_text,
+            parse_mode="Markdown",
+            reply_markup=markup,
+        )
+    else:
+        message.reply_text(
+            text=message_text,
+            parse_mode="Markdown",
+            reply_markup=markup,
+        )
 
 
 def city_page(update: Update, context: CallbackContext):
     post_id = _get_post_id(update)
+    post = Post.query.get(post_id)
 
-    update.callback_query.edit_message_text(
-        text=(
-            "Вкажіть місто публікації вакансії, для цього оберіть один і "
-            "з варіантів зі списку нижче. Використовуйте кнопки ⬅️️ та ➡️ для "
-            "навігації між сторінками списку"
-        ),
-        reply_markup=get_cities_keyboard(prefix=f'post.{post_id}.city'),
+    text = (
+        "Вкажіть місто публікації вакансії, для цього оберіть один і "
+        "з варіантів зі списку нижче. Використовуйте кнопки ⬅️️ та ➡️ для "
+        "навігації між сторінками списку"
     )
+    reply_markup = get_cities_keyboard(prefix=f'post.{post_id}.city')
+
+    if post.image_id:
+        update.callback_query.message.edit_caption(caption=text, reply_markup=reply_markup)
+    else:
+        update.callback_query.message.edit_text(text=text, reply_markup=reply_markup)
 
 
 def city_navigate(update: Update, context: CallbackContext):
@@ -231,20 +271,24 @@ def city_choose(update: Update, context: CallbackContext):
     post.city_id = city_id
     db.session.commit()
 
-    _send_job_post(post, send_func=update.callback_query.edit_message_text)
+    _send_job_post(post, update)
 
 
 def position_page(update: Update, context: CallbackContext):
     post_id = _get_post_id(update)
+    post = Post.query.get(post_id)
 
-    update.callback_query.edit_message_text(
-        text=(
-            "Оберіть одну з категорій для насилання вакансії, для цього оберіть "
-            "один із варіантів зі списку нижче. Використовуйте кнопки ⬅️️ та ➡️ для "
-            "навігації між сторінками списку"
-        ),
-        reply_markup=get_positions_keyboard(prefix=f'post.{post_id}.position'),
+    text = (
+        "Оберіть одну з категорій для насилання вакансії, для цього оберіть "
+        "один із варіантів зі списку нижче. Використовуйте кнопки ⬅️️ та ➡️ для "
+        "навігації між сторінками списку."
     )
+    reply_markup = get_positions_keyboard(prefix=f'post.{post_id}.position')
+
+    if post.image_id:
+        update.callback_query.message.edit_caption(caption=text, reply_markup=reply_markup)
+    else:
+        update.callback_query.message.edit_text(text=text, reply_markup=reply_markup)
 
 
 def position_navigate(update: Update, context: CallbackContext):
@@ -262,7 +306,7 @@ def position_choose(update: Update, context: CallbackContext):
     post.position_id = position_id
     db.session.commit()
 
-    _send_job_post(post, send_func=update.callback_query.edit_message_text)
+    _send_job_post(post, update)
 
 
 def delete_post(update: Update, context: CallbackContext):
@@ -277,11 +321,15 @@ def publish_post(update: Update, context: CallbackContext):
     post_id = _get_post_id(update)
     post = Post.query.get(post_id)
 
-    update.callback_query.edit_message_text('Відправляємо повідомлення ⌛')
+    text = 'Відправляємо повідомлення ⌛'
+    if post.image_id:
+        update.callback_query.message.edit_caption(caption=text)
+    else:
+        update.callback_query.edit_message_text(text)
 
     send_post(post)
 
-    _send_job_post(post, send_func=update.callback_query.edit_message_text)
+    _send_job_post(post, update)
 
 
 def cancel_create_post(update: Update, context: CallbackContext):
@@ -315,7 +363,9 @@ def add_admin_handlers(dp: Dispatcher):
         ConversationHandler(
             entry_points=[CommandHandler('post', create_job)],
             states={
-                CREATE_JOB: [MessageHandler(Filters.text, save_post)],
+                CREATE_JOB: [
+                    MessageHandler(Filters.text | Filters.photo, save_post),
+                ],
             },
             fallbacks=[
                 CommandHandler('cancel', cancel_create_post),
@@ -336,4 +386,5 @@ def add_admin_handlers(dp: Dispatcher):
 
     dp.add_handler(CallbackQueryHandler(delete_post, pattern=r'post\.\d+\.delete'), group=DEFAULT_GROUP)
     dp.add_handler(CallbackQueryHandler(publish_post, pattern=r'post\.\d+\.publish'), group=DEFAULT_GROUP)
+    dp.add_handler(CallbackQueryHandler(_empty_callback, pattern=r'post\.\d+\.none'), group=DEFAULT_GROUP)
 
