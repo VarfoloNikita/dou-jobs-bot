@@ -18,7 +18,7 @@ services:
     volumes: ['.:/work']
     depends_on: ["db"]
     entrypoint: flask
-    command: run
+    command: run --host 0.0.0.0
 
   worker:
     tty: true

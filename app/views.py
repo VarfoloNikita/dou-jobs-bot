@@ -17,7 +17,7 @@ def _make_csv(items: List[DataDict]):
     si = io.StringIO()
     cw = csv.DictWriter(si, names)
     cw.writeheader()
-    cw.writerows(items[:1])
+    cw.writerows(items)
     output = make_response(si.getvalue())
     output.headers["Content-Disposition"] = "attachment; filename=export.csv"
     output.headers["Content-type"] = "text/csv"
