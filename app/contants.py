@@ -26,16 +26,5 @@ PAGINATION_SIZE = 5
 
 HOST = 'https://dou-jobs-telegram-bot.herokuapp.com'
 
-ALL_COMMANDS = [
-    'start',
-    'list',
-    'add',
-    'post',
-    'stat',
-    'greeting',
-    'unsubscribe',
-    'help',
-]
-
 
 DEFAULT_GROUP = 1000

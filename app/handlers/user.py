@@ -12,9 +12,10 @@ from telegram.ext import (
 
 from app import db, parser, sender, updater
 from app.contants import DEFAULT_GREETING, ADMIN_MENU, MENU, DEFAULT_GROUP
-from app.enum import AddSubscriptionStates, SubscriptionPageState, Action
+from app.enum import AddSubscriptionStates, SubscriptionPageState, Action, Menu
 from app.models import City, Position, Subscription, UserChat, Greeting, Stat
-from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard, AnyHandler, get_keyboard_menu
+from app.utils import get_cities_keyboard, update_list_page, get_positions_keyboard, AnyHandler, get_keyboard_menu, \
+    MenuStringHandler
 
 
 def start(update: Update, context: CallbackContext):
@@ -264,6 +265,7 @@ def add_user_handlers(dp: Dispatcher):
     dp.add_handler(
         ConversationHandler(
             entry_points=[
+                MenuStringHandler(Menu.add, add_subscription),
                 CommandHandler('add', add_subscription),
                 CommandHandler('start', start),
             ],
@@ -278,6 +280,7 @@ def add_user_handlers(dp: Dispatcher):
                 ],
             },
             fallbacks=[
+                MenuStringHandler(Menu, cancel_add_subscription),
                 CommandHandler('cancel', cancel_add_subscription),
                 MessageHandler(Filters.command, cancel_add_subscription),
                 AnyHandler(add_subscription_fallback),
@@ -288,9 +291,11 @@ def add_user_handlers(dp: Dispatcher):
     )
 
     # Manage subscription
+    dp.add_handler(MenuStringHandler(Menu.list, list_subscription), group=DEFAULT_GROUP)
     dp.add_handler(CommandHandler('list', list_subscription), group=DEFAULT_GROUP)
     dp.add_handler(CallbackQueryHandler(choose_subscription, pattern=r'subscription\.choose\.\d+'), group=DEFAULT_GROUP)
     dp.add_handler(CallbackQueryHandler(delete_subscription, pattern=r'subscription\.delete\.\d+'), group=DEFAULT_GROUP)
     dp.add_handler(CallbackQueryHandler(list_subscription, pattern=r'subscription\.list'), group=DEFAULT_GROUP)
 
+    dp.add_handler(MenuStringHandler(Menu.unsubscribe, unsubscribe_all), group=DEFAULT_GROUP)
     dp.add_handler(CommandHandler('unsubscribe', unsubscribe_all), group=DEFAULT_GROUP)

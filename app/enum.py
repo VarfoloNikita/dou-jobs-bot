@@ -19,3 +19,14 @@ class AddSubscriptionStates(Enum):
 class SubscriptionPageState(Enum):
     list = 'list'
     page = 'page'
+
+
+class Menu(Enum):
+    list = 'Мої підписки 📋'
+    add = 'Підписатися ➕'
+    help = 'Допомога 🙋'
+    unsubscribe = 'Відписатися 🔴'
+
+    greeting = 'Змінити привітання 👋'
+    stat = 'Статистика 📈'
+    post = 'Створити публікацію ✍️'

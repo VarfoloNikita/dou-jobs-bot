@@ -1,11 +1,12 @@
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union, Type
 
 from sqlalchemy.orm import Query
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReplyKeyboardMarkup, \
     KeyboardButton, PhotoSize
-from telegram.ext import Handler
+from telegram.ext import Handler, MessageHandler, Filters
 
 from app.contants import PAGINATION_SIZE
+from app.enum import Menu
 from app.models import City, Position, UserChat
 
 
@@ -87,16 +88,13 @@ def get_keyboard_menu(update: Update):
     message = update.message or update.callback_query.message
     chat = UserChat.query.get(message.chat_id)
     custom_keyboard = [
-        [KeyboardButton(text="/list - Список підписок")],
-        [KeyboardButton(text="/add - Додати підписку")],
-        [KeyboardButton(text="/help - Допомога")],
-        [KeyboardButton(text="/unsubscribe - Відписатися від сповіщень")],
+        [KeyboardButton(text=Menu.add.value), KeyboardButton(text=Menu.list.value)],
+        [KeyboardButton(text=Menu.unsubscribe.value), KeyboardButton(text=Menu.help.value)],
     ]
     if chat.is_admin:
         custom_keyboard.extend([
-            [KeyboardButton(text="/stat - Отримати статистику")],
-            [KeyboardButton(text="/greeting - Змінити привітання ")],
-            [KeyboardButton(text="/post - Створити оголешення")],
+            [KeyboardButton(text=Menu.stat.value), KeyboardButton(text=Menu.greeting.value)],
+            [KeyboardButton(text=Menu.post.value)],
         ])
     return ReplyKeyboardMarkup(custom_keyboard)
 
@@ -115,3 +113,29 @@ def get_largest_photo(photos: List[PhotoSize]) -> Optional[str]:
 class AnyHandler(Handler):
     def check_update(self, update):
         return True
+
+
+class MenuStringHandler(MessageHandler):
+
+    def __init__(self,
+                 values: Union[Menu, Type[Menu]],
+                 callback: Callable,
+                 pass_update_queue=False,
+                 pass_job_queue=False,
+                 pass_user_data=False,
+                 pass_chat_data=False,
+                 message_updates=None,
+                 channel_post_updates=None,
+                 edited_updates=None):
+        if isinstance(values, Menu):
+            pattern = values.value
+        else:
+            pattern = '|'.join(item.value for item in values)
+        super().__init__(
+            Filters.regex(pattern),
+            callback,
+            pass_update_queue=pass_update_queue,
+            pass_job_queue=pass_job_queue,
+            pass_user_data=pass_user_data,
+            pass_chat_data=pass_chat_data
+        )

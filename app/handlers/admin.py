@@ -14,8 +14,10 @@ from telegram.ext import (
 
 from app import db, bot, app
 from app.contants import DEFAULT_GREETING, HOST, DEFAULT_GROUP
+from app.enum import Menu
 from app.models import Greeting, Post, City, Position, Subscription, utc_now, UserChat
-from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard, AnyHandler, get_largest_photo
+from app.utils import update_list_page, get_cities_keyboard, get_positions_keyboard, AnyHandler, get_largest_photo, \
+    MenuStringHandler
 
 HandlerFunction = Callable[[Update, CallbackContext], Any]
 
@@ -344,34 +346,42 @@ def print_bad_query(update: Update, context: CallbackContext):
 def add_admin_handlers(dp: Dispatcher):
     dp.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler('greeting', get_greeting)],
-            states={
-                SET_GREETING: [MessageHandler(Filters.text, update_greeting)],
-            },
-            fallbacks=[
-                CommandHandler('cancel', cancel_update_greeting),
-                MessageHandler(Filters.command, cancel_update_greeting),
-                AnyHandler(greeting_fallback),
+            entry_points=[
+                MenuStringHandler(Menu.greeting, get_greeting),
+                CommandHandler('greeting', get_greeting)
             ],
+            states={
+                SET_GREETING: [
+                    MenuStringHandler(Menu, cancel_update_greeting),
+                    CommandHandler('cancel', cancel_update_greeting),
+                    MessageHandler(Filters.command, cancel_update_greeting),
+                    MessageHandler(Filters.text, update_greeting)
+                ],
+            },
+            fallbacks=[AnyHandler(greeting_fallback)],
             allow_reentry=True,
         ),
         group=1,
     )
+
+    dp.add_handler(MenuStringHandler(Menu.stat, get_statistic), group=DEFAULT_GROUP)
     dp.add_handler(CommandHandler('stat', get_statistic), group=DEFAULT_GROUP)
 
     dp.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler('post', create_job)],
+            entry_points=[
+                MenuStringHandler(Menu.post, create_job),
+                CommandHandler('post', create_job),
+            ],
             states={
                 CREATE_JOB: [
+                    MenuStringHandler(Menu, cancel_create_post),
+                    CommandHandler('cancel', cancel_create_post),
+                    MessageHandler(Filters.command, cancel_create_post),
                     MessageHandler(Filters.text | Filters.photo, save_post),
                 ],
             },
-            fallbacks=[
-                CommandHandler('cancel', cancel_create_post),
-                MessageHandler(Filters.command, cancel_create_post),
-                AnyHandler(post_fallback)
-            ],
+            fallbacks=[AnyHandler(post_fallback)],
             allow_reentry=True,
         ),
         group=2,
