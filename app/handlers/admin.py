@@ -91,9 +91,9 @@ def get_greeting(update: Update, context: CallbackContext):
     greeting = Greeting.query.get(1)
     text = greeting.text if greeting else DEFAULT_GREETING
     update.message.reply_text(
-        "Напишіть знизу тест, яким я буду вітатися з новими користувачами. "
-        "Якщо не хочете нічого змінювати введіть команду /cancel\n\n"
-        "_Зараз я вітаюся таким повідомленням_:\n"
+        "Напиши мені текст, яким я буду вітатися з новими користувачами. Якщо усе "
+        "супер, то введи команду /cancel\n\n"
+        "Зараз я вітаюся таким повідомленням_:\n"
         f"{text}",
         parse_mode="Markdown"
     )
@@ -104,8 +104,8 @@ def update_greeting(update: Update, context: CallbackContext):
     message: Message = update.message
     Greeting.set_text(text=message.text)
     update.message.reply_text(
-        "Вітання змінено! Якщо захочете змінити чи відредагувати вітання "
-        "повторіть команду /greeting",
+        "Вітання змінено! Якщо захочеш змінити привітання, "
+        "введи команду /greeting знову",
         parse_mode="Markdown",
     )
     return ConversationHandler.END
@@ -121,8 +121,8 @@ def greeting_fallback(update: Update, context: CallbackContext):
 def cancel_update_greeting(update: Update, context: CallbackContext):
     update.message.reply_text(
         text=(
-            "Ви залишили старе привітання, якщо захочете змінити "
-            "привітання знову введіть команду /greeting знову"
+            "Ви залишили старе привітання, якщо захочеш змінити "
+            "привітання, введи команду /greeting знову"
         ),
         parse_mode="Markdown",
     )
@@ -135,9 +135,9 @@ def get_statistic(update: Update, context: CallbackContext):
     update.message.reply_text(
         text=(
             f"Посилання з даними:\n\n"
-            f"Користувачі: {HOST}/users \n"
-            f"Дії: {HOST}/actions \n"
-            f"Підписки: {HOST}/subscriptions \n"
+            f"Користувачі: {HOST}/users \n\n"
+            f"Дії: {HOST}/actions \n\n"
+            f"Підписки: {HOST}/subscriptions \n\n"
         ),
         parse_mode="Markdown",
         disable_web_page_preview=True,
@@ -147,11 +147,11 @@ def get_statistic(update: Update, context: CallbackContext):
 @admin_required
 def create_job(update: Update, context: CallbackContext):
     update.message.reply_text(
-        "Введіть нижче текст повідомлення який ви хочете розіслати користувачам. "
-        "Я не надсилатиму сповіщення відразу ж, лише тоді коли ви натиснете "
-        "кнопку 'Опублікувати'. Для повідомлення використовується Markdown. \n"
-        "Щоб дабавити зображення під текстом, вставте посилання на це зображення в "
-        "такому форматі: [[.]](https://picsum.photos/id/501/536/354)",
+        "Напиши текст-повідомлення, який хочеш розіслати користувачам. "
+        "Я не надсилатиму сповіщення одразу, а лише тоді, коли натиснеш "
+        "кнопку 'Опублікувати'. Для повідомлення використовується Markdown.\n\n" 
+        "Щоб додати зображення до тексту, пиши посилання на це зображення у "
+        "такому форматі: [.](https://picsum.photos/id/501/536/354)",
         parse_mode="Markdown",
         disable_web_page_preview=True,
     )
