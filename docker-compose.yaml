@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+
+  web:
+    tty: true
+    environment: &app-environment
+      DATABASE_URL: postgres://admin:admin@db/bot
+      TELEGRAM_TOKEN: # token
+      HEROKU_APP_NAME: app
+      HEROKU_DOMAIN: localhost
+      # dev environments
+      FLASK_APP: app:app
+      FLASK_DEBUG: "1"
+    build: .
+    image: bot-web
+    ports: ["5000:5000"]
+    volumes: ['.:/work']
+    depends_on: ["db"]
+    entrypoint: flask
+    command: run --host 0.0.0.0
+
+  worker:
+    tty: true
+    environment:
+      <<: *app-environment
+    build: .
+    image: bot-worker
+    volumes: ['.:/work']
+    depends_on: ["db"]
+    entrypoint: python dev.py
+
+  db:
+    image: postgres
+    restart: always
+    ports: ["5432:5432"]
+    volumes:
+      - ./.database:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: bot
+      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: admin
