@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List
 
 import sqlalchemy as sa
@@ -26,6 +27,8 @@ def send_vacancy_to_chat(chat: VacancyChat, vacancy: Vacancy):
 
 
 def dispatch_vacancies():
+    day_ago = utc_now() - timedelta(days=1)
+
     # get unsent vacancies
     vacancies = (
         db.session.query(Vacancy, Subscription)
@@ -44,7 +47,10 @@ def dispatch_vacancies():
                 VacancyChat.vacancy_id == Vacancy.id
             )
         )
-        .filter(VacancyChat.id.is_(None))
+        .filter(
+            VacancyChat.id.is_(None),
+            Vacancy.date_created > day_ago,
+        )
         .all()
     )
     for chunk in chunks(vacancies, n=10):

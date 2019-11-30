@@ -139,6 +139,8 @@ def add_position(update: Update, context: CallbackContext):
             text=f"🤷‍♀️ На жаль, у місті *{city.name}* немає вакансій в категорії *{position.name}*",
             parse_mode='Markdown',
         )
+    # send only 10 vacancies for preventing spamming
+    vacancies = vacancies[:10]
     sender.send_vacancies(vacancies, message.chat_id)
 
     return ConversationHandler.END
