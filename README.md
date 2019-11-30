@@ -1,12 +1,8 @@
-# job-subscritption-bot
+# dou-subscription-bot
 
+###How to run locally
+
+Change TELEGRAM TOKEN in `docker-compose.yaml` and run 
 ```shell script
-heroku config >> .env  # copy heroku config variables to # local env config (*)
-heroku local  # run locally gunicorn with application
+docker-compose up worker
 ```
-
-
-
-
-* Be aware of using production setting on local machine, 
-change parameters like database to your local database configuration.
