@@ -1,6 +1,6 @@
 # dou-subscription-bot
 
-###How to run locally
+### How to run locally
 
 Change TELEGRAM TOKEN in `docker-compose.yaml` and run 
 ```shell script
