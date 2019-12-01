@@ -39,6 +39,7 @@ def users():
                 'is_admin': chat.is_admin,
                 'is_active': chat.is_active,
                 'date_created': chat.date_created.date(),
+                'user_name': chat.user_name,
             }
             for chat in chats
         ]
