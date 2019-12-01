@@ -14,6 +14,7 @@ class UserChat(db.Model):
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     context = db.Column(db.JSON, nullable=False, default=lambda: {})
+    user_name = db.Column(db.String(length=256), nullable=True)
     date_created = db.Column(db.DateTime, default=utc_now)
 
     subscriptions = db.relationship('Subscription', backref='chat', lazy=True)

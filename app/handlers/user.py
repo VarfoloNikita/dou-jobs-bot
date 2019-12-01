@@ -20,10 +20,15 @@ from app.utils import get_cities_keyboard, update_list_page, get_positions_keybo
 
 def start(update: Update, context: CallbackContext):
     # create and get new user chat instance
+    user_name = None
+    if update.message and update.message.from_user:
+        user_name = update.message.from_user.username
+
     chat = UserChat(
         id=update.message.chat_id,
         is_admin=False,
         is_active=True,
+        user_name=user_name,
     )
     chat = chat.soft_add()
 
@@ -46,7 +51,7 @@ def add_subscription(update: Update, context: CallbackContext):
         text=(
             "Вкажи місто, де потрібно шукати вакансії, для цього обирай один "
             "варіант зі списку нижче. Використовуй кнопки ⬅️️ та ➡️ для навігації між "
-            "сторінками списку. Якщо захочеш віхилити опитування, натисти /cancel"
+            "сторінками списку. Якщо захочеш відхилити опитування, натисни /cancel"
         ),
         reply_markup=get_cities_keyboard(),
     )

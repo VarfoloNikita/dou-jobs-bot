@@ -93,7 +93,7 @@ def get_greeting(update: Update, context: CallbackContext):
     update.message.reply_text(
         "Напиши мені текст, яким я буду вітатися з новими користувачами. Якщо усе "
         "супер, то введи команду /cancel\n\n"
-        "Зараз я вітаюся таким повідомленням_:\n"
+        "Зараз я вітаюся таким повідомленням:\n"
         f"{text}",
         parse_mode="Markdown"
     )
